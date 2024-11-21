@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>눌러서 줄이기</title>
+
+    <style>
+        @font-face {
+            font-family: 'Galmuri Mono 11';
+            src: url('fonts/GalmuriMono11.woff') format('woff'); /* WOFF 포맷 사용 */
+        }
+
+        body {
+            background-color: #000000; /* 배경색 검은색 */
+            color: #ffffff; /* 글자색 흰색 */
+            font-family: 'Galmuri Mono 11', monospace; /* 갈무리 모노 서체 적용 */
+            line-height: 1.6;
+            font-size: 24px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 24px; /* 타이틀 글자 크기 */
+            color: #ffffff; /* 타이틀 글자 색상 (선택 사항) */
+        }
+
+        textarea {
+            width: 90%;
+            height: 20ex;
+            font-size: 24px;
+            background-color: #111111; /* 텍스트 상자 배경 검은색 */
+            color: #ffffff; /* 텍스트 상자 글씨 흰색 */
+            font-family: 'Galmuri Mono 11', monospace; /* 텍스트 상자 서체 */
+            border: 1px solid #ffffff; /* 테두리 흰색 */
+            padding: 10px;
+        }
+
+        .slider {
+            appearance: none;
+            background-color: #333333;
+            border-radius: 0%x;
+            width: 90%;
+            height: 1ex;
+        }
+
+        .slider::-webkit-slider-thumb {
+            appearance: none;
+            background-color: #ffffff;
+            border: 0.5ex solid #ffffff;
+            border-radius: 0%;
+            height: 3ex;
+            width: 3ex;
+            cursor: pointer;
+        }
+
+        .spos {
+            color: #ffffff;
+            font-family: 'Galmuri Mono 11', monospace;
+        }
+    </style>
+</head>
+<body onload="recalculate()">
+
+<h1>눌러서 줄이기</h1>
+
+<p>
+<b>Step 1:</b> 텍스트를 입력하세요:
+</p>
+
+<p>
+<textarea id="in" oninput="recalculate()">
+글을 여기에 입력하세요.
+</textarea>
+</p>
+
+<p>
+<b>Step 2:</b> 슬라이더를 조정하세요:
+</p>
+
+<p>
+<input type="range" min="0" max="1000" value="0" id="div" class="slider" oninput="recalculate()">
+<br>
+<span id="slider_pos" class="spos">0</span>
+</p>
+
+<p>
+<b>Step 3:</b> 결과 출력:
+</p>
+
+<p>
+<textarea id="out" readonly></textarea>
+</p>
+
+<script>
+    function recalculate() {
+        var in_text = document.getElementById('in').value,
+            in_len = in_text.length,
+            shoddiness = document.getElementById('div').value / 10;
+
+        // UTF-8 인코딩을 위한 버퍼 생성
+        var in_buf = [];
+        for (var i = 0; i < in_len; i++) {
+            in_buf.push(in_text.charCodeAt(i));
+        }
+
+        var dct_result = dct(in_buf, in_len);
+        document.getElementById('slider_pos').innerText = shoddiness;
+
+        dct_result = quantize(dct_result, in_len, shoddiness);
+        var idct_result = idct(dct_result, in_len);
+
+        // 복원 후 UTF-8 변환
+        var out_text = String.fromCharCode.apply(null, idct_result);
+        document.getElementById('out').value = out_text;
+    }
+
+    function dct(in_buf, len) {
+        var result = [];
+        for (var f_bkt = 0; f_bkt < len; f_bkt++) {
+            var sum = 0;
+            for (var sample_no = 0; sample_no < len; sample_no++) {
+                sum += in_buf[sample_no] * Math.cos(Math.PI * f_bkt * (sample_no + 0.5) / len);
+            }
+            result[f_bkt] = sum;
+        }
+        return result;
+    }
+
+    function idct(in_buf, len) {
+        var result = [];
+        for (var sample_no = 0; sample_no < len; sample_no++) {
+            var sum = 0;
+            for (var f_bkt = 0; f_bkt < len; f_bkt++) {
+                sum += in_buf[f_bkt] * Math.cos(Math.PI * f_bkt * (sample_no + 0.5) / len) * (f_bkt ? 2 : 1);
+            }
+            result[sample_no] = Math.round(sum / len);
+        }
+        return result;
+    }
+
+    function quantize(dct_buf, len, shoddiness) {
+        var result = [];
+        result[0] = dct_buf[0];
+        for (var i = 1; i < len; i++) {
+            var use_div = 1 + shoddiness * (len - i) / len;
+            result[i] = Math.round(dct_buf[i] / use_div) * use_div;
+        }
+        return result;
+    }
+</script>
+
+</body>
+</html>
